@@ -1,0 +1,14 @@
+# Large datasets
+data/raw/data.csv
+data/processed/processed_data.csv
+data/processed/features.csv
+data/processed/predictions.csv
+data/feedback.csv
+
+# Temporary files
+*.pyc
+__pycache__/
+*.ipynb_checkpoints/
+
+# Environment
+*.env
