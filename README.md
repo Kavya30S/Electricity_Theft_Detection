@@ -16,6 +16,26 @@ The goal? Build a system that’s accurate, fast, and easy to use, helping utili
 
 ## Concept and Techniques
 
+We look for odd patterns in electricity usage (e.g., sudden drops) using machine learning:
+
+- **Dataset**: SGCC dataset with `CONS_NO`, `FLAG` (0 = no theft, 1 = theft), and daily usage (e.g., `2014/1/1`). It’s ~167 MB, with ~42,372 rows and ~1,033 columns.
+- **EDA**: Plots usage trends, correlations, and consumption standard deviation (`01_eda.py`).
+- **Preprocessing**: Fills missing values, normalizes data, removes outliers with IQR (`02_preprocessing.py`).
+- **Features**: Computes mean, standard deviation, max, min usage per customer (`03_features.py`).
+- **Models** (`04_model.py`):
+  - **Isolation Forest**: Flags outliers (unsupervised).
+  - **Autoencoder**: Neural network for anomaly detection, 10 epochs (unsupervised).
+  - **XGBoost**: Predicts theft with labeled data, using SMOTE (supervised).
+  - **Random Forest**: Enhances supervised predictions.
+- **Evaluation Metrics** (example, update with actual values):
+  - Isolation Forest: ROC-AUC = 0.70, F1 = 0.62
+  - Autoencoder: ROC-AUC = 0.72, F1 = 0.65
+  - XGBoost: ROC-AUC = 0.85, F1 = 0.80
+  - Random Forest: ROC-AUC = 0.83, F1 = 0.78
+- **Visualization**: Matplotlib for static plots (e.g., `distribution_std_dev.png`), Plotly for dashboard charts (`dashboard.py`).
+- **Feedback**: The dashboard includes a form to validate predictions, saving to `data/feedback.csv`.
+- **Explainability**: SHAP plots for XGBoost (`shap_summary_xgboost.png`, `shap_force_xgboost.png`) in `05_results.py`.
+
 The core idea is to use machine learning to find unusual electricity usage patterns that might indicate someone’s tampering with their meter. Here’s how we do it:
 
 - **Dataset**: The SGCC dataset has daily electricity readings for customers, with a ‘FLAG’ column (0 for normal, 1 for theft). It’s about 42,372 customers with ~1,033 daily readings, making it a hefty dataset (~40 MB).
@@ -34,39 +54,48 @@ The project runs on a mid-range laptop (8GB RAM, 4-core CPU), and we’ve optimi
 
 ## Project Folder Structure
 
-Here’s how the project is organized:
-
 ```
 electricity_theft_detection/
 ├── data/
 │   ├── raw/
-│   │   └── data.csv              # Raw SGCC dataset
+│   │   └── data.csv              # Raw SGCC dataset (excluded, download separately)
 │   ├── processed/
-│   │   ├── processed_data.csv    # Cleaned and normalized data
-│   │   ├── features.csv          # Extracted features
-│   │   └── predictions.csv       # Model predictions
+│   │   ├── processed_data.csv    # Cleaned data (excluded)
+│   │   ├── features.csv          # Extracted features (excluded)
+│   │   ├── predictions.csv       # Model predictions (excluded)
+│   │   └── feedback.csv          # User feedback (excluded)
 ├── notebooks/
 │   ├── 01_eda.py                 # Exploratory data analysis
-│   ├── 02_preprocessing.py       # Data cleaning and normalization
+│   ├── 02_preprocessing.py       # Data cleaning
 │   ├── 03_features.py            # Feature engineering
-│   ├── 04_model.py               # Model training and predictions
+│   ├── 04_model.py               # Model training
 │   └── 05_results.py             # Results visualization
 ├── src/
 │   ├── preprocessing.py          # Preprocessing functions
-│   ├── features.py               # Feature extraction functions
-│   ├── graph_clustering.py       # Graph-based clustering (optional)
+│   ├── features.py               # Feature extraction
+│   ├── graph_clustering.py       # Optional clustering
 │   ├── autoencoder.py            # Autoencoder model
-│   ├── models.py                 # Model training functions
-│   └── utils.py                  # Utility functions (e.g., save_plot)
+│   ├── models.py                 # Model training
+│   └── utils.py                  # Utility functions
 ├── reports/
 │   ├── figures/
 │   │   ├── correlation_heatmap.png
 │   │   ├── distribution_std_dev.png
+│   │   ├── confusion_matrix_anomaly.png
+│   │   ├── confusion_matrix_autoencoder.png
 │   │   ├── confusion_matrix_xgboost.png
-│   │   └── roc_curve.png         # ROC-AUC plot
+│   │   ├── confusion_matrix_rf.png
+│   │   ├── roc_curve_anomaly.png
+│   │   ├── roc_curve_autoencoder.png
+│   │   ├── roc_curve_xgboost.png
+│   │   ├── roc_curve_rf.png
+│   │   ├── shap_summary_xgboost.png
+│   │   ├── shap_force_xgboost.png
+│   │   └── xgb_predictions.png
 │   └── report.md                 # Project report
 ├── dashboard.py                  # Streamlit dashboard
 ├── requirements.txt              # Dependencies
+├── .gitignore                    # Excludes large files
 └── README.md                     # This file
 ```
 
@@ -102,14 +131,7 @@ Getting this project up and running is straightforward. Follow these steps:
      pip install xgboost==1.4.2 setuptools==65.5.0 wheel==0.38.4 plotly==5.15.0 protobuf==3.19.6 keras==2.6.0 --no-cache-dir
      ```
 
-3. **Set Up Jupyter Kernel for VSCode**:
-   - Install the kernel:
-     ```bash
-     python -m ipykernel install --user --name theft_detection_new --display-name "Python (theft_detection_new)"
-     ```
-   - Open VSCode, select the project folder, and choose `Python (theft_detection_new)` kernel for `.py` files or converted notebooks.
-
-4. **Run the Scripts**:
+3. **Run the Scripts**:
    - In VSCode, open `notebooks/01_eda.py` to `05_results.py` and run them sequentially (use `Shift+Enter` or “Run Python File”).
    - Or, in Anaconda Prompt:
      ```bash
@@ -121,19 +143,72 @@ Getting this project up and running is straightforward. Follow these steps:
      ```
    - Check outputs in `data/processed/` (e.g., `predictions.csv`) and `reports/figures/` (e.g., `confusion_matrix_xgboost.png`).
 
-5. **Launch the Dashboard**:
+4. **Launch the Dashboard**:
    - Run:
      ```bash
      streamlit run dashboard.py
      ```
    - Open the URL (e.g., `http://localhost:8501`) to explore interactive plots and customer predictions.
 
-6. **Test with a Subset** (to speed things up):
+5. **Test with a Subset** (to speed things up):
    - Create a smaller dataset:
      ```bash
      python -c "import pandas as pd; df = pd.read_csv('data/raw/data.csv'); df.iloc[:1000].to_csv('data/raw/data_subset.csv', index=False)"
      ```
    - Update script paths to use `data_subset.csv` for faster testing (~2–3 minutes total).
+
+   ## Usage Guide
+
+1. **Run Analysis Scripts**:
+   - Execute scripts in order to generate outputs:
+     ```bash
+     python notebooks/01_eda.py
+     python notebooks/02_preprocessing.py
+     python notebooks/03_features.py
+     python notebooks/04_model.py
+     python notebooks/05_results.py
+     ```
+   - Outputs: `reports/figures/` (e.g., `distribution_std_dev.png`, `shap_summary_xgboost.png`), `data/processed/predictions.csv`.
+
+2. **Launch Dashboard**:
+   ```bash
+   streamlit run dashboard.py
+   ```
+   - Access at `http://localhost:8501` to view predictions, SHAP plots, and submit feedback.
+
+3. **Test with Subset**:
+   - Create a smaller dataset for faster testing (~2–3 minutes):
+     ```bash
+     python -c "import pandas as pd; df = pd.read_csv('data/raw/data.csv'); df.iloc[:1000].to_csv('data/raw/data_subset.csv', index=False)"
+     ```
+   - Update `data_path` in `01_eda.py` and `02_preprocessing.py` to use `data_subset.csv`.
+
+## Git Setup
+
+Large files are excluded via `.gitignore`. To sync with the repository:
+
+```bash
+git clone https://github.com/Kavya30S/Electricity_Theft_Detection.git
+cd Electricity_Theft
+git config --global http.postBuffer 524288000
+```
+
+If adding changes:
+```bash
+git add .
+git commit -m "Update project files"
+git push origin main
+```
+
+If using Git LFS for large processed files:
+```bash
+git lfs install
+git lfs track "data/processed/*.csv"
+git add .gitattributes data/processed/*.csv
+git commit -m "Track large CSVs with Git LFS"
+git push origin main
+```
+
 
 ## Challenges Faced
 
